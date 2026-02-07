@@ -6,7 +6,7 @@ class STS:
         self.id = str(id)
 
     def verify(self):
-        # ডাটাবেস থেকে ডাটা চেক করা
+        # ডাটাবেস থেকে চেক করবে
         return db.get_forward_data(self.id)
 
     def store(self, From, to, skip, limit):
@@ -14,14 +14,10 @@ class STS:
             "_id": self.id,
             "FROW": From, 
             "TO": to, 
-            "total_files": 0, 
             "skip": skip,
-            "fetched": skip, 
-            "filtered": 0, 
-            "deleted": 0, 
-            "duplicate": 0,
             "last_msg_id": limit
         }
+        # ডাটাবেসে সেভ করবে
         db.save_forward_data(self.id, data)
         return STS(self.id)
 
@@ -30,6 +26,5 @@ class STS:
         if not data:
             return None
         if not full:
-            # chat_id, toid, skip, last_msg_id ফরম্যাটে রিটার্ন
             return data.get('FROW'), data.get('TO'), data.get('skip'), data.get('last_msg_id')
         return data

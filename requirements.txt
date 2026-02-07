@@ -12,3 +12,4 @@ python-decouple
 requests
 speedtest-cli
 pymongo
+flask

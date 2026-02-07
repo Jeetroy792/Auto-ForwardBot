@@ -82,14 +82,14 @@ async def run(bot, message):
         disable_web_page_preview=True,
         reply_markup=reply_markup
     )
-    STS(forward_id).store(chat_id, toid, int(skipno.text), int(last_msg_id))
+    await STS(forward_id).store(chat_id, toid, int(skipno.text), int(last_msg_id))
 
 #==================Callback Handler (Fixed)==================#
 
 @Client.on_callback_query(filters.regex(r'^start_public_'))
 async def start_public(bot, query):
     _, _, forward_id = query.data.split("_")
-    data = STS(forward_id).get()
+    data = await STS(forward_id).get()
     if not data:
         return await query.message.edit("<b>❌ Data not found! Please try again.</b>")
     

@@ -35,10 +35,14 @@ class STS:
        by = 1 if int(by) == 0 else by 
        return int(no) / by 
     
-    async def get_data(self, user_id):
+    async def get_data(self, user_id, client=None):
         bot = await db.get_bot(user_id)
         k, filters = self, await db.get_filters(user_id)
         size, configs = None, await db.get_configs(user_id)
+        
+        # Userbot Client logic integration
+        current_client = client.user if client and hasattr(client, 'user') else client
+        
         if configs['duplicate']:
            duplicate = [configs['db_uri'], self.TO]
         else:
@@ -46,6 +50,15 @@ class STS:
         button = parse_buttons(configs['button'] if configs['button'] else '')
         if configs['file_size'] != 0:
             size = [configs['file_size'], configs['size_limit']]
-        return bot, configs['caption'], configs['forward_tag'], {'chat_id': k.FROM, 'limit': k.limit, 'offset': k.skip, 'filters': filters,
-                'keywords': configs['keywords'], 'media_size': size, 'extensions': configs['extension'], 'skip_duplicate': duplicate}, configs['protect'], button
-        
+            
+        return bot, configs['caption'], configs['forward_tag'], {
+                'chat_id': k.FROM, 
+                'limit': k.limit, 
+                'offset': k.skip, 
+                'filters': filters,
+                'keywords': configs['keywords'], 
+                'media_size': size, 
+                'extensions': configs['extension'], 
+                'skip_duplicate': duplicate,
+                'client': current_client # Passing userbot client for private access
+            }, configs['protect'], button

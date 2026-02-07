@@ -61,8 +61,6 @@ async def run(bot, message):
         return 
     try:
         title = (await bot.get_chat(chat_id)).title
-  #  except ChannelInvalid:
-        #return await fromid.reply("**Given source chat is copyrighted channel/group. you can't forward messages from there**")
     except (PrivateChat, ChannelPrivate, ChannelInvalid):
         title = "private" if fromid.text else fromid.forward_from_chat.title
     except (UsernameInvalid, UsernameNotModified):
@@ -85,3 +83,44 @@ async def run(bot, message):
         reply_markup=reply_markup
     )
     STS(forward_id).store(chat_id, toid, int(skipno.text), int(last_msg_id))
+
+#==================Callback Handler (Fixed)==================#
+
+@Client.on_callback_query(filters.regex(r'^start_public_'))
+async def start_public(bot, query):
+    _, _, forward_id = query.data.split("_")
+    data = STS(forward_id).get()
+    if not data:
+        return await query.message.edit("<b>❌ Data not found! Please try again.</b>")
+    
+    chat_id, toid, skip, last_msg_id = data
+    await query.message.edit("<b>🚀 Forwarding started...</b>")
+    
+    success = 0
+    failed = 0
+    
+    try:
+        # Fixed: Using bot.user.get_chat_history instead of iter_messages
+        async for message in bot.user.get_chat_history(chat_id, offset_id=skip, reverse=True):
+            if message.id > last_msg_id:
+                break
+            
+            try:
+                # Copying the message
+                await message.copy(chat_id=toid)
+                success += 1
+                await asyncio.sleep(1.5) 
+            except FloodWait as e:
+                await asyncio.sleep(e.value)
+                await message.copy(chat_id=toid)
+                success += 1
+            except Exception:
+                failed += 1
+                
+            if (success + failed) % 10 == 0:
+                await query.message.edit(f"<b>📊 Status:</b>\n✅ Success: {success}\n❌ Failed: {failed}")
+                
+        await query.message.edit(f"<b>✅ Forwarding Completed!</b>\n\nTotal Success: {success}\nTotal Failed: {failed}")
+        
+    except Exception as e:
+        await query.message.edit(f"<b>❌ Error: {e}</b>")

@@ -160,8 +160,7 @@ class Database:
               
     async def add_frwd(self, user_id):
        return await self.nfy.insert_one({'user_id': int(user_id)})
-    
-        async def get_all_frwd(self):
+    async def get_all_frwd(self):
         return self.nfy.find({})
 
     async def save_forward_data(self, id, data):

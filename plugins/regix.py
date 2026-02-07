@@ -34,7 +34,8 @@ async def pub_(bot, message):
     if i.TO in temp.IS_FRWD_CHAT:
       return await message.answer("In Target chat a task is progressing. please wait until task complete", show_alert=True)
     m = await msg_edit(message.message, "<code>verifying your data's, please wait.</code>")
-    _bot, caption, forward_tag, data, protect, button = await sts.get_data(user)
+    # client=bot added to pass the bot instance to get_data
+    _bot, caption, forward_tag, data, protect, button = await sts.get_data(user, client=bot)
     if not _bot:
       return await msg_edit(m, "<code>You didn't added any bot. Please add a bot using /settings !</code>", wait=True)
     try:
@@ -42,8 +43,12 @@ async def pub_(bot, message):
     except Exception as e:  
       return await m.edit(e)
     await msg_edit(m, "<code>processing..</code>")
+    
+    # Selecting Userbot client for private channel access
+    auth_client = data.get('client') if data.get('client') else client
+    
     try: 
-       await client.get_messages(sts.get("FROM"), sts.get("limit"))
+       await auth_client.get_messages(sts.get("FROM"), sts.get("limit"))
     except:
        await msg_edit(m, f"**Source chat may be a private channel / group. Use userbot (user must be member over there) or  if Make Your [Bot](t.me/{_bot['username']}) an admin over there**", retry_btn(frwd_id), True)
        return await stop(client, user)
@@ -67,8 +72,10 @@ async def pub_(bot, message):
           pling=0
           await edit(m, 'Progressing', 10, sts)
           print(f"Starting Forwarding Process... From :{sts.get('FROM')} To: {sts.get('TO')} Totel: {sts.get('limit')} stats : {sts.get('skip')})")
-          async for message in client.iter_messages(
-            client,
+          
+          # Using auth_client (Userbot) to iterate through messages
+          async for message in auth_client.iter_messages(
+            auth_client,
             chat_id=sts.get('FROM'), 
             limit=int(sts.get('limit')), 
             offset=int(sts.get('skip')) if sts.get('skip') else 0

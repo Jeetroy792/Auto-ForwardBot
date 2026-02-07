@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging 
 import logging.config
@@ -30,7 +31,7 @@ class Bot(Client):
             name="userbot",
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
-            session_string=Config.USER_SESSION # Make sure to add USER_SESSION in your config
+            session_string=os.environ.get("USER_SESSION") # Make sure to add USER_SESSION in your config
         )
 
     async def start(self):

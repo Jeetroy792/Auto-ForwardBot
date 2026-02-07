@@ -124,3 +124,4 @@ async def start_public(bot, query):
         
     except Exception as e:
         await query.message.edit(f"<b>❌ Error: {e}</b>")
+     

@@ -161,11 +161,13 @@ class Database:
     async def add_frwd(self, user_id):
        return await self.nfy.insert_one({'user_id': int(user_id)})
     
-    async def rmve_frwd(self, user_id=0, all=False):
-       data = {} if all else {'user_id': int(user_id)}
-       return await self.nfy.delete_many(data)
-    
-    async def get_all_frwd(self):
-       return self.nfy.find({})
-     
+        async def get_all_frwd(self):
+        return self.nfy.find({})
+
+    async def save_forward_data(self, id, data):
+        await self.db.forward_status.update_one({'_id': str(id)}, {'$set': data}, upsert=True)
+
+    async def get_forward_data(self, id):
+        return await self.db.forward_status.find_one({'_id': str(id)})
+
 db = Database(Config.DATABASE_URI, Config.DATABASE_NAME)

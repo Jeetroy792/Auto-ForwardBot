@@ -25,9 +25,17 @@ class Bot(Client):
             bot_token=Config.BOT_TOKEN
         )
         self.log = logging
+        # Userbot Client Initialization
+        self.user = Client(
+            name="userbot",
+            api_id=Config.API_ID,
+            api_hash=Config.API_HASH,
+            session_string=Config.USER_SESSION # Make sure to add USER_SESSION in your config
+        )
 
     async def start(self):
         await super().start()
+        await self.user.start() # Starting the userbot
         me = await self.get_me()
         logging.info(f"{me.first_name} with for pyrogram v{__version__} (Layer {layer}) started on @{me.username}.")
         self.id = me.id
@@ -58,5 +66,6 @@ class Bot(Client):
 
     async def stop(self, *args):
         msg = f"@{self.username} stopped. Bye."
+        await self.user.stop() # Stopping the userbot
         await super().stop()
         logging.info(msg)

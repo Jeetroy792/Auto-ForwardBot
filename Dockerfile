@@ -3,16 +3,20 @@ FROM python:3.12-slim
 # Install required system dependencies
 RUN apt update && apt install -y \
     git gcc python3-dev libffi-dev build-essential \
- && apt upgrade -y
+    && apt upgrade -y
 
-# Copy requirements file
-COPY requirements.txt /requirements.txt
+# Set the working directory
+WORKDIR /fwdbot
+
+# Copy all repository files into the container
+# This step was missing in your previous file
+COPY . .
 
 # Install Python dependencies
-RUN pip3 install --upgrade pip && pip3 install -r /requirements.txt
+RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
 
-# Set up working directory and entry point
-RUN mkdir /fwdbot
-WORKDIR /fwdbot
-COPY start.sh /start.sh
-CMD ["/bin/bash", "/start.sh"]
+# Grant execution permission to the start script
+RUN chmod +x start.sh
+
+# Start the application
+CMD ["/bin/bash", "start.sh"]

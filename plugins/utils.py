@@ -7,7 +7,7 @@ class STS:
         self.id = str(id)
 
     async def verify(self):
-        # সরাসরি ডাটাবেস থেকে চেক
+        # আপনার ডাটাবেস ফাইলের ফাংশন অনুযায়ী
         return await db.get_forward_data(self.id)
 
     async def store(self, From, to, skip, limit):
@@ -31,9 +31,7 @@ class STS:
     async def get(self, value=None, full=False):
         data = await db.get_forward_data(self.id)
         if not data:
-            if full: 
-                # ডাটা না থাকলে ডিফল্ট ভ্যালু যাতে কোড ক্র্যাশ না করে
-                return SimpleNamespace(fetched=0, total=0, total_files=0, duplicate=0, deleted=0, skip=0, start=tm.time(), id=self.id)
+            if full: return SimpleNamespace(fetched=0, total=0, total_files=0, duplicate=0, deleted=0, skip=0, start=tm.time(), id=self.id, TO=0)
             return None
         if full:
             return SimpleNamespace(**data)
@@ -43,31 +41,34 @@ class STS:
 
     async def add(self, key, value=1):
         """
-        MongoDB $inc ব্যবহার করে সরাসরি ডাটাবেসে ভ্যালু আপডেট। 
-        এতে ডাটা ফেচ করার প্রয়োজন হয় না, তাই এটি অনেক ফাস্ট।
+        আপনার database.py এর 'db.forward_status' কালেকশনে সরাসরি আপডেট করবে।
+        এটি ডেটা ফেচ না করেই সরাসরি MongoDB-তে ভ্যালু বাড়াবে ($inc)।
         """
         if key == 'time':
-            # সময় আপডেট করার জন্য $set ব্যবহার
-            await db.db.forward.update_one({"_id": self.id}, {"$set": {"start": tm.time()}})
+            await db.db.forward_status.update_one({'_id': self.id}, {'$set': {'start': tm.time()}})
         else:
-            # সংখ্যা বাড়ানোর জন্য $inc ব্যবহার (MongoDB native operator)
-            await db.db.forward.update_one({"_id": self.id}, {"$inc": {key: value}})
+            await db.db.forward_status.update_one({'_id': self.id}, {'$inc': {key: value}})
         return True
 
     async def get_data(self, user_id, client=None):
-        settings = await db.get_settings(user_id) 
-        if not settings:
-            return None, None, False, {}, False, None
+        """
+        আপনার database.py এর get_configs এবং get_bot ফাংশন ব্যবহার করবে।
+        """
+        configs = await db.get_configs(user_id)
+        _bot = await db.get_bot(user_id)
         
-        _bot = settings.get('bot')
-        caption = settings.get('caption', "")
-        forward_tag = settings.get('forward_tag', False)
-        protect = settings.get('protect', False)
-        button = settings.get('button', None)
-        return _bot, caption, forward_tag, settings, protect, button
+        if not _bot:
+            return None, None, False, {}, False, None
+            
+        caption = configs.get('caption', "")
+        forward_tag = configs.get('forward_tag', False)
+        protect = configs.get('protect', False)
+        button = configs.get('button', None)
+        
+        return _bot, caption, forward_tag, configs, protect, button
 
     def divide(self, n, d):
         try:
             return n / d if d else 0
-        except ZeroDivisionError:
+        except:
             return 0

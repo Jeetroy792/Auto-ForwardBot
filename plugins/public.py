@@ -26,7 +26,6 @@ async def run(bot, message):
     toid = channels[0]['chat_id']
     to_title = channels[0]['title']
     
-    # Selecting TO channel if multiple exist
     if len(channels) > 1:
         buttons = [[KeyboardButton(f"{c['title']}")] for c in channels]
         buttons.append([KeyboardButton("cancel")])
@@ -43,7 +42,6 @@ async def run(bot, message):
     if fromid.text and fromid.text.startswith('/'):
         return await message.reply(Translation.CANCEL)
     
-    # Link Parsing
     chat_id, last_msg_id = None, None
     if fromid.text:
         regex = re.compile(r"(https://)?(t\.me/|telegram\.me/|telegram\.dog/)(c/)?(\d+|[a-zA-Z_0-9]+)/(\d+)$")
@@ -73,7 +71,7 @@ async def run(bot, message):
     )
     await STS(forward_id).store(chat_id, toid, int(skip_msg.text), int(last_msg_id))
 
-#==================Callback Handler==================#
+#==================Callback Handler (Final Fix)==================#
 
 @Client.on_callback_query(filters.regex(r'^start_public_'))
 async def start_public(bot, query):
@@ -88,16 +86,20 @@ async def start_public(bot, query):
     success, failed = 0, 0
     
     try:
-        # sequence fix: reverse=True (Oldest to Newest)
+        # Client Not Started Error Fix
+        if not bot.user.is_connected:
+            await bot.user.start()
+
+        # Sequence Fix (reverse=True) and Limit Fix
         async for message in bot.user.get_chat_history(chat_id, limit=int(target_count), reverse=True):
             
-            # Cancel Logic
+            # Cancel Check
             if hasattr(bot, 'is_cancelled') and bot.is_cancelled:
                 bot.is_cancelled = False
-                await query.message.edit("<b>❌ Cancelled!</b>")
+                await query.message.edit("<b>❌ Process Cancelled!</b>")
                 return
 
-            if not message or message.service:
+            if not message or message.service or message.empty:
                 continue
             
             try:
@@ -112,10 +114,12 @@ async def start_public(bot, query):
                 failed += 1
                 
             if (success + failed) % 10 == 0:
-                try: await query.message.edit(f"<b>📊 Progress:</b>\n✅ {success} | ❌ {failed}")
-                except: pass
+                try:
+                    await query.message.edit(f"<b>📊 Progress:</b>\n✅ Success: {success}\n❌ Failed: {failed}")
+                except:
+                    pass
                 
-        await query.message.edit(f"<b>✅ Completed!</b>\n\nTotal Forwarded: {success}")
+        await query.message.edit(f"<b>✅ Forwarding Completed!</b>\n\nTotal Success: {success}")
         
     except Exception as e:
-        await query.message.edit(f"<b>❌ Error: {e}</b>")
+        await query.message.edit(f"<b>❌ Final Error: {e}</b>")

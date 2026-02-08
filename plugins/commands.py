@@ -42,6 +42,26 @@ async def restart(client, message):
     await asyncio.sleep(5)
     await msg.edit("<i>Server restarted successfully ✅</i>")
     os.execl(sys.executable, sys.executable, *sys.argv)
+#==================Cancel Function==================#
+
+@Client.on_message(filters.private & filters.command(['cancel']))
+async def cancel_task(client, message):
+    user_id = message.from_user.id
+    
+    # ১. চেক করা হচ্ছে ইউজারের কোনো প্রসেস চলছে কি না
+    if not temp.lock.get(user_id):
+        return await message.reply_text("**বর্তমানে আপনার কোনো ফরওয়ার্ডিং টাস্ক চলছে না।**")
+
+    # ২. ক্যানসেল সিগন্যাল পাঠানো
+    temp.CANCEL[user_id] = True
+    
+    # ৩. লক এবং স্ট্যাটাস আপডেট
+    temp.lock[user_id] = False
+    
+    await message.reply_text(
+        "**❌ ক্যানসেল কমান্ড পাঠানো হয়েছে!**\n"
+        "বট তার পরবর্তী মেসেজ প্রসেস করার সময় এটি থামিয়ে দেবে। অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।"
+    )
     
 #==================Callback Functions==================#
 

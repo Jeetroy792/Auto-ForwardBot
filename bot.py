@@ -16,6 +16,7 @@ logging.getLogger("pyrogram").setLevel(logging.ERROR)
 
 class Bot(Client): 
     def __init__(self):
+        self.is_cancelled = False
         super().__init__(
             name="main_bot_session", 
             api_hash=Config.API_HASH,

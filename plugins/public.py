@@ -55,7 +55,7 @@ async def run(bot, message):
         last_msg_id = fromid.forward_from_message_id
         chat_id = fromid.forward_from_chat.username or fromid.forward_from_chat.id
         if last_msg_id == None:
-           return await message.reply_text("**This may be a forwarded message from a group and sended by anonymous admin. instead of this please send last message link from group**")
+           return await message.reply_text("**Invalid forward message! Use last message link.**")
     else:
         await message.reply_text("**invalid !**")
         return 
@@ -84,7 +84,7 @@ async def run(bot, message):
     )
     await STS(forward_id).store(chat_id, toid, int(skipno.text), int(last_msg_id))
 
-#==================Callback Handler (Fixed)==================#
+#==================Callback Handler (Updated)==================#
 
 @Client.on_callback_query(filters.regex(r'^start_public_'))
 async def start_public(bot, query):
@@ -100,13 +100,19 @@ async def start_public(bot, query):
     failed = 0
     
     try:
-        # Fixed: Using bot.user.get_chat_history instead of iter_messages
+        # Fixed: reverse=True ensures sequence from Old to New
         async for message in bot.user.get_chat_history(chat_id, offset_id=skip, reverse=True):
+            
+            # Strong Cancel Check
+            if hasattr(bot, 'is_cancelled') and bot.is_cancelled:
+                bot.is_cancelled = False
+                await query.message.edit("<b>❌ Forwarding Process Cancelled!</b>")
+                return
+
             if message.id > last_msg_id:
                 break
             
             try:
-                # Copying the message
                 await message.copy(chat_id=toid)
                 success += 1
                 await asyncio.sleep(1.5) 
@@ -124,4 +130,3 @@ async def start_public(bot, query):
         
     except Exception as e:
         await query.message.edit(f"<b>❌ Error: {e}</b>")
-     

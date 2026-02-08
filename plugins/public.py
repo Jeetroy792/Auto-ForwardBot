@@ -82,9 +82,10 @@ async def run(bot, message):
         disable_web_page_preview=True,
         reply_markup=reply_markup
     )
+    # ডাটাবেসে skip এর ভ্যালু হিসেবে ইউজারের দেওয়া সংখ্যাটি জমা হচ্ছে
     await STS(forward_id).store(chat_id, toid, int(skipno.text), int(last_msg_id))
 
-#==================Callback Handler (Updated)==================#
+#==================Callback Handler (Counter Fixed)==================#
 
 @Client.on_callback_query(filters.regex(r'^start_public_'))
 async def start_public(bot, query):
@@ -93,40 +94,26 @@ async def start_public(bot, query):
     if not data:
         return await query.message.edit("<b>❌ Data not found! Please try again.</b>")
     
-    chat_id, toid, skip, last_msg_id = data
+    chat_id, toid, target_count, last_msg_id = data # skip ভ্যালুটিকে target_count হিসেবে ধরা হলো
     await query.message.edit("<b>🚀 Forwarding started...</b>")
     
     success = 0
     failed = 0
+    current_count = 0
     
     try:
-        # Fixed: reverse=True ensures sequence from Old to New
-        async for message in bot.user.get_chat_history(chat_id, offset_id=skip, reverse=True):
+        # এখানে offset_id এর পরিবর্তে ইউজারের দেওয়া লিমিট ব্যবহার করা হচ্ছে
+        async for message in bot.user.get_chat_history(chat_id, limit=int(target_count), reverse=True):
             
-            # Strong Cancel Check
+            # ক্যানসেল চেক
             if hasattr(bot, 'is_cancelled') and bot.is_cancelled:
                 bot.is_cancelled = False
                 await query.message.edit("<b>❌ Forwarding Process Cancelled!</b>")
                 return
 
-            if message.id > last_msg_id:
-                break
-            
+            # ডিলিট করা মেসেজ বা সার্ভিস মেসেজ স্কিপ করা
+            if not message or message.service or message.empty:
+                continue
+
             try:
-                await message.copy(chat_id=toid)
-                success += 1
-                await asyncio.sleep(1.5) 
-            except FloodWait as e:
-                await asyncio.sleep(e.value)
-                await message.copy(chat_id=toid)
-                success += 1
-            except Exception:
-                failed += 1
-                
-            if (success + failed) % 10 == 0:
-                await query.message.edit(f"<b>📊 Status:</b>\n✅ Success: {success}\n❌ Failed: {failed}")
-                
-        await query.message.edit(f"<b>✅ Forwarding Completed!</b>\n\nTotal Success: {success}\nTotal Failed: {failed}")
-        
-    except Exception as e:
-        await query.message.edit(f"<b>❌ Error: {e}</b>")
+                await

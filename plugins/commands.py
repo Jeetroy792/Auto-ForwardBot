@@ -50,7 +50,7 @@ async def cancel_task(client, message):
     
     # ১. চেক করা হচ্ছে ইউজারের কোনো প্রসেস চলছে কি না
     if not temp.lock.get(user_id):
-        return await message.reply_text("**বর্তমানে আপনার কোনো ফরওয়ার্ডিং টাস্ক চলছে না।**")
+        return await message.reply_text("**❌CANCELLED THE TASK**")
 
     # ২. ক্যানসেল সিগন্যাল পাঠানো
     temp.CANCEL[user_id] = True

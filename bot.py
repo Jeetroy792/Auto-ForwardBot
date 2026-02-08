@@ -16,14 +16,15 @@ logging.getLogger("pyrogram").setLevel(logging.ERROR)
 class Bot(Client): 
     def __init__(self):
         super().__init__(
-            Config.BOT_SESSION,
+            name="bot", # এখানে সেশন ফাইলের নাম হিসেবে 'bot' সেট করা হয়েছে
             api_hash=Config.API_HASH,
             api_id=Config.API_ID,
             plugins={
                 "root": "plugins"
             },
             workers=50,
-            bot_token=Config.BOT_TOKEN
+            bot_token=Config.BOT_TOKEN,
+            in_memory=True # এটি সেশন ফাইল ডুপ্লিকেট হওয়া আটকাবে
         )
         self.log = logging
         # Userbot Client Initialization
@@ -31,7 +32,8 @@ class Bot(Client):
             name="userbot",
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
-            session_string=os.environ.get("USER_SESSION") # Make sure to add USER_SESSION in your config
+            session_string=os.environ.get("USER_SESSION"), 
+            in_memory=True # এটি সেশন ফাইল ডুপ্লিকেট হওয়া আটকাবে
         )
 
     async def start(self):

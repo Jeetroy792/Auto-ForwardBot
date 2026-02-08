@@ -7,7 +7,7 @@ from config import Config
 from pyrogram import Client, __version__
 from pyrogram.raw.all import layer 
 from pyrogram.enums import ParseMode
-from pyrogram.errors import FloodWait 
+from pyrogram.errors import FloodWait, RPCError
 
 logging.config.fileConfig('logging.conf')
 logging.getLogger().setLevel(logging.INFO)
@@ -16,17 +16,16 @@ logging.getLogger("pyrogram").setLevel(logging.ERROR)
 class Bot(Client): 
     def __init__(self):
         super().__init__(
-            name="main_bot_session", 
+            name="dynamic_bot", 
             api_hash=Config.API_HASH,
             api_id=Config.API_ID,
             plugins={"root": "plugins"},
-            workers=50,
+            workers=100, # দ্রুত কাজের জন্য বাড়ানো হয়েছে
             bot_token=Config.BOT_TOKEN,
             in_memory=True 
         )
-        self.log = logging
         self.user = Client(
-            name="main_user_session", 
+            name="dynamic_user", 
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
             session_string=os.environ.get("USER_SESSION"), 
@@ -34,49 +33,35 @@ class Bot(Client):
         )
 
     async def start(self):
-        await super().start()
-        await self.user.start() 
-        me = await self.get_me()
-        logging.info(f"{me.first_name} started on @{me.username}.")
-        self.id = me.id
-        self.username = me.username
-        self.first_name = me.first_name
-        self.set_parse_mode(ParseMode.DEFAULT)
-        
-        text = "**๏[-ิ_•ิ]๏ bot restarted !**"
-        
-        # টার্গেট চ্যানেলে রিস্টার্ট মেসেজ পাঠানো
-        if hasattr(Config, 'LOG_CHANNEL') and Config.LOG_CHANNEL:
-            await self.send_message(Config.LOG_CHANNEL, text)
+        try:
+            await super().start()
+            if self.user:
+                await self.user.start()
             
-        success = failed = 0
-        users = await db.get_all_frwd()
-        async for user in users:
-           chat_id = user['user_id']
-           try:
-              await self.send_message(chat_id, text)
-              success += 1
-           except FloodWait as e:
-              await asyncio.sleep(e.value + 1)
-              await self.send_message(chat_id, text)
-              success += 1
-           except Exception:
-              failed += 1 
-              
-        if (success + failed) != 0:
-           await db.rmve_frwd(all=True)
-           logging.info(f"Restart message status success: {success} failed: {failed}")
+            me = await self.get_me()
+            self.id = me.id
+            self.username = me.username
+            
+            logging.info(f"@{me.username} is now 24/7 Online!")
+            
+            # ডাটাবেসের ইউজারদের নোটিফাই করা (ঐচ্ছিক)
+            text = "**๏[-ิ_•ิ]๏ Bot is back Online & Stable!**"
+            users = await db.get_all_frwd()
+            async for user in users:
+                try:
+                    await self.send_message(user['user_id'], text)
+                except:
+                    continue
+
+        except Exception as e:
+            logging.error(f"Error while starting: {e}")
+            await asyncio.sleep(5) # ৫ সেকেন্ড অপেক্ষা করে আবার চেষ্টা করবে
+            return await self.start()
 
     async def stop(self, *args):
-        # বন্ধ হওয়ার সময় মেসেজ পাঠানো
-        shutdown_msg = "**🔴 Bot is going Offline!**"
-        try:
-            if hasattr(Config, 'LOG_CHANNEL') and Config.LOG_CHANNEL:
-                await self.send_message(Config.LOG_CHANNEL, shutdown_msg)
-        except:
-            pass
-            
+        # অফলাইন হওয়ার সময় যাতে কোনো মেসেজ না যায় (যেহেতু আপনি অফলাইন চান না)
         if self.user.is_connected:
             await self.user.stop() 
         await super().stop()
-        logging.info("Bot Stopped.")
+        logging.info("Bot Stopped Temporarily.")
+

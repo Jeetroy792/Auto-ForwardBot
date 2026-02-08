@@ -35,56 +35,62 @@ class Bot(Client):
         )
 
     async def start(self):
-        # ১. মেইন বট স্টার্ট করা
+        # ১. মেইন বট কানেক্ট করা
         if not self.is_connected:
             await super().start()
         
-        # ২. ইউজারবট স্টার্ট করা
+        # ২. ইউজারবট কানেক্ট করা
         if self.user and not self.user.is_connected:
             try:
                 await self.user.start()
+                logging.info("Userbot started successfully!")
             except Exception as e:
                 logging.error(f"Userbot Error: {e}")
-
-        # ৩. সামান্য অপেক্ষা করা যাতে কানেকশন স্ট্যাবল হয়
-        await asyncio.sleep(2)
 
         me = await self.get_me()
         self.id = me.id
         self.username = me.username
-        self.first_name = me.first_name
         
         text = "**๏[-ิ_•ิ]๏ Bot is now Online!**"
         
-        # ৪. সুরক্ষিতভাবে ব্রডকাস্ট করা
-        if self.is_connected:
-            try:
-                users = await db.get_all_frwd()
-                async for user in users:
-                    try:
-                        if isinstance(user, dict):
-                            chat_id = user.get('user_id')
-                        else:
-                            chat_id = getattr(user, 'user_id', None) or getattr(user, 'id', None)
+        # ৩. ডাটাবেস থেকে আইডি বের করার নিরাপদ পদ্ধতি (SimpleNamespace Fix)
+        try:
+            users = await db.get_all_frwd()
+            async for user in users:
+                try:
+                    # আইডি চেক করার লজিক (ডিকশনারি বা অবজেক্ট যাই হোক)
+                    chat_id = None
+                    if isinstance(user, dict):
+                        chat_id = user.get('user_id') or user.get('id')
+                    else:
+                        chat_id = getattr(user, 'user_id', None) or getattr(user, 'id', None)
 
-                        if chat_id:
-                            await self.send_message(chat_id, text)
-                    except Exception:
-                        continue
-            except Exception as e:
-                logging.error(f"Broadcast Error: {e}")
+                    if chat_id:
+                        await self.send_message(int(chat_id), text)
+                except Exception:
+                    continue
+        except Exception as e:
+            logging.error(f"Broadcast Error: {e}")
 
-        logging.info(f"{me.first_name} started on @{me.username}.")
+        logging.info(f"@{me.username} is now 24/7 Online.")
 
     async def stop(self, *args):
-        # বন্ধ হওয়ার আগে চেক করে মেসেজ পাঠানো
-        if self.is_connected:
-            try:
-                stop_text = "**🔴 বটটি বর্তমানে অফলাইন করা হয়েছে।**"
-                if hasattr(Config, 'LOG_CHANNEL') and Config.LOG_CHANNEL:
-                    await self.send_message(Config.LOG_CHANNEL, stop_text)
-            except:
-                pass
+        # বন্ধ হওয়ার সময় ক্যানসেল মেসেজ পাঠানো
+        stop_text = "**🔴 অপারেশন ক্যানসেল করা হয়েছে এবং বট অফলাইন যাচ্ছে।**"
+        try:
+            # টার্গেট চ্যানেলে (যদি থাকে)
+            if hasattr(Config, 'LOG_CHANNEL') and Config.LOG_CHANNEL:
+                await self.send_message(Config.LOG_CHANNEL, stop_text)
+            
+            # ডাটাবেসে থাকা ইউজারদের জানানো
+            users = await db.get_all_frwd()
+            async for user in users:
+                try:
+                    chat_id = user.get('user_id') if isinstance(user, dict) else getattr(user, 'user_id', None)
+                    if chat_id:
+                        await self.send_message(int(chat_id), stop_text)
+                except: continue
+        except: pass
 
         if self.user and self.user.is_connected:
             await self.user.stop() 

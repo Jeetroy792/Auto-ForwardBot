@@ -16,7 +16,7 @@ logging.getLogger("pyrogram").setLevel(logging.ERROR)
 class Bot(Client): 
     def __init__(self):
         super().__init__(
-            name="bot", # এখানে সেশন ফাইলের নাম হিসেবে 'bot' সেট করা হয়েছে
+            name="main_bot", # সেশন নাম ইউনিক করা হয়েছে
             api_hash=Config.API_HASH,
             api_id=Config.API_ID,
             plugins={
@@ -24,16 +24,16 @@ class Bot(Client):
             },
             workers=50,
             bot_token=Config.BOT_TOKEN,
-            in_memory=True # এটি সেশন ফাইল ডুপ্লিকেট হওয়া আটকাবে
+            in_memory=True # মেমরিতে রান করবে, ফাইল তৈরি করবে না
         )
         self.log = logging
         # Userbot Client Initialization
         self.user = Client(
-            name="userbot",
+            name="main_userbot", # সেশন নাম ইউনিক করা হয়েছে
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
             session_string=os.environ.get("USER_SESSION"), 
-            in_memory=True # এটি সেশন ফাইল ডুপ্লিকেট হওয়া আটকাবে
+            in_memory=True # মেমরিতে রান করবে, সেশন ফাইল ডুপ্লিকেট হবে না
         )
 
     async def start(self):
@@ -60,15 +60,14 @@ class Bot(Client):
               success += 1
            except Exception:
               failed += 1 
-    #    await self.send_message("venombotsupport", text)
+              
         if (success + failed) != 0:
            await db.rmve_frwd(all=True)
-           logging.info(f"Restart message status"
-                 f"success: {success}"
-                 f"failed: {failed}")
+           logging.info(f"Restart message status success: {success} failed: {failed}")
 
     async def stop(self, *args):
         msg = f"@{self.username} stopped. Bye."
-        await self.user.stop() # Stopping the userbot
+        if self.user.is_connected:
+            await self.user.stop() # Stopping the userbot
         await super().stop()
         logging.info(msg)

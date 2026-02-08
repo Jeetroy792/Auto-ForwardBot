@@ -35,11 +35,11 @@ class Bot(Client):
         )
 
     async def start(self):
-        # ১. মেইন বট কানেক্ট করা
+        # ১. মেইন বট স্টার্ট করা
         if not self.is_connected:
             await super().start()
         
-        # ২. ইউজারবট কানেক্ট করা
+        # ২. ইউজারবট স্টার্ট করা
         if self.user and not self.user.is_connected:
             try:
                 await self.user.start()
@@ -53,24 +53,26 @@ class Bot(Client):
         
         text = "**๏[-ิ_•ิ]๏ Bot is now Online!**"
         
-        # ৩. ডাটাবেস থেকে আইডি বের করার নিরাপদ পদ্ধতি (SimpleNamespace Fix)
+        # ৩. ডাটাবেস থেকে আইডি বের করার জন্য চূড়ান্ত নিরাপদ পদ্ধতি
         try:
             users = await db.get_all_frwd()
             async for user in users:
                 try:
-                    # আইডি চেক করার লজিক (ডিকশনারি বা অবজেক্ট যাই হোক)
+                    # এখানে ডিকশনারি এবং সিম্পল নেমস্পেস দুটোর জন্যই চেক আছে
                     chat_id = None
                     if isinstance(user, dict):
                         chat_id = user.get('user_id') or user.get('id')
                     else:
+                        # অবজেক্ট হলেgetattr ব্যবহার করে ডাটা চেক করা
                         chat_id = getattr(user, 'user_id', None) or getattr(user, 'id', None)
 
                     if chat_id:
                         await self.send_message(int(chat_id), text)
-                except Exception:
+                except Exception as e:
+                    logging.debug(f"Broadcast skip for a user: {e}")
                     continue
         except Exception as e:
-            logging.error(f"Broadcast Error: {e}")
+            logging.error(f"Broadcasting error on start: {e}")
 
         logging.info(f"@{me.username} is now 24/7 Online.")
 
@@ -86,9 +88,14 @@ class Bot(Client):
             users = await db.get_all_frwd()
             async for user in users:
                 try:
-                    chat_id = user.get('user_id') if isinstance(user, dict) else getattr(user, 'user_id', None)
-                    if chat_id:
-                        await self.send_message(int(chat_id), stop_text)
+                    # আইডি বের করার সেফ মেথড
+                    if isinstance(user, dict):
+                        c_id = user.get('user_id') or user.get('id')
+                    else:
+                        c_id = getattr(user, 'user_id', None) or getattr(user, 'id', None)
+                        
+                    if c_id:
+                        await self.send_message(int(c_id), stop_text)
                 except: continue
         except: pass
 

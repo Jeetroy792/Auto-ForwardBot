@@ -9,7 +9,64 @@ from pyrogram.errors import FloodWait
 from pyrogram.errors.exceptions.not_acceptable_406 import ChannelPrivate as PrivateChat
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid, ChatAdminRequired, UsernameInvalid, UsernameNotModified, ChannelPrivate
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
- 
+# আগের ইম্পোর্টগুলো ঠিক থাকবে...
+
+@Client.on_callback_query(filters.regex(r'^start_public_'))
+async def start_public(bot, query):
+    _, _, forward_id = query.data.split("_")
+    data = await STS(forward_id).get()
+    if not data:
+        return await query.message.edit("<b>❌ Error: Data not found.</b>")
+    
+    chat_id, toid, target_count, last_msg_id = data
+    await query.message.edit("<b>🚀 Forwarding started...</b>")
+    
+    success, failed = 0, 0
+    processed_ids = set() # ডুপ্লিকেট রোধ করার জন্য ট্র্যাকার
+
+    try:
+        if not bot.user.is_connected:
+            await bot.user.start()
+
+        # limit ব্যবহার করা হয়েছে যাতে অতিরিক্ত মেসেজ না আসে
+        async for message in bot.user.get_chat_history(chat_id, limit=int(target_count), reverse=True):
+            
+            # ডুপ্লিকেট চেক: একই আইডি দ্বিতীয়বার আসবে না
+            if message.id in processed_ids:
+                continue
+            
+            # ক্যানসেল চেক
+            if hasattr(bot, 'is_cancelled') and bot.is_cancelled:
+                bot.is_cancelled = False
+                await query.message.edit("<b>❌ Process Cancelled!</b>")
+                return
+
+            if not message or message.service or message.empty:
+                continue
+            
+            try:
+                await message.copy(chat_id=toid)
+                processed_ids.add(message.id) # আইডি সেভ করে রাখা হলো
+                success += 1
+                await asyncio.sleep(2) 
+            except FloodWait as e:
+                await asyncio.sleep(e.value + 1)
+                await message.copy(chat_id=toid)
+                success += 1
+            except Exception:
+                failed += 1
+                
+            if (success + failed) % 10 == 0:
+                try:
+                    await query.message.edit(f"<b>📊 Progress:</b>\n✅ Success: {success}\n❌ Failed: {failed}")
+                except:
+                    pass
+                
+        await query.message.edit(f"<b>✅ Forwarding Completed!</b>\n\nTotal Unique Messages: {success}")
+        
+    except Exception as e:
+        await query.message.edit(f"<b>❌ Error: {e}</b>")
+      
 #===================Run Function===================#
 
 @Client.on_message(filters.private & filters.command(["fwd", "forward"]))

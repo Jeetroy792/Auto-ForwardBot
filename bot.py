@@ -26,7 +26,6 @@ class Bot(Client):
             in_memory=True 
         )
         self.log = logging
-        # Userbot Client Initialization
         self.user = Client(
             name="main_user_session", 
             api_id=Config.API_ID,
@@ -36,65 +35,57 @@ class Bot(Client):
         )
 
     async def start(self):
-        # ১. মেইন বট কানেক্ট করা
+        # ১. মেইন বট স্টার্ট করা
         if not self.is_connected:
             await super().start()
         
-        # ২. ইউজারবট কানেক্ট করা (সেশন ভুল থাকলেও বট চলবে)
+        # ২. ইউজারবট স্টার্ট করা
         if self.user and not self.user.is_connected:
             try:
                 await self.user.start()
-                logging.info("Userbot started successfully!")
             except Exception as e:
                 logging.error(f"Userbot Error: {e}")
+
+        # ৩. সামান্য অপেক্ষা করা যাতে কানেকশন স্ট্যাবল হয়
+        await asyncio.sleep(2)
 
         me = await self.get_me()
         self.id = me.id
         self.username = me.username
         self.first_name = me.first_name
-        self.set_parse_mode(ParseMode.DEFAULT)
         
         text = "**๏[-ิ_•ิ]๏ Bot is now Online!**"
         
-        # ৩. ডাটাবেস থেকে ইউজারদের মেসেজ পাঠানো (Attribute Error Fix)
-        try:
-            users = await db.get_all_frwd()
-            async for user in users:
-                try:
-                    # ডিকশনারি বা অবজেক্ট থেকে আইডি বের করার নিরাপদ পদ্ধতি
-                    if isinstance(user, dict):
-                        chat_id = user.get('user_id')
-                    else:
-                        chat_id = getattr(user, 'user_id', None) or getattr(user, 'id', None)
+        # ৪. সুরক্ষিতভাবে ব্রডকাস্ট করা
+        if self.is_connected:
+            try:
+                users = await db.get_all_frwd()
+                async for user in users:
+                    try:
+                        if isinstance(user, dict):
+                            chat_id = user.get('user_id')
+                        else:
+                            chat_id = getattr(user, 'user_id', None) or getattr(user, 'id', None)
 
-                    if chat_id:
-                        await self.send_message(chat_id, text)
-                except Exception:
-                    continue
-        except Exception as e:
-            logging.error(f"Database Broadcast Error: {e}")
+                        if chat_id:
+                            await self.send_message(chat_id, text)
+                    except Exception:
+                        continue
+            except Exception as e:
+                logging.error(f"Broadcast Error: {e}")
 
-        logging.info(f"{me.first_name} (Layer {layer}) started on @{me.username}.")
+        logging.info(f"{me.first_name} started on @{me.username}.")
 
     async def stop(self, *args):
-        # বন্ধ হওয়ার সময় নোটিফিকেশন
-        stop_text = "**🔴 বটটি বর্তমানে অফলাইন করা হয়েছে।**"
-        try:
-            # টার্গেট চ্যানেলে (যদি কনফিগার করা থাকে)
-            if hasattr(Config, 'LOG_CHANNEL') and Config.LOG_CHANNEL:
-                await self.send_message(Config.LOG_CHANNEL, stop_text)
-            
-            # ডাটাবেসে থাকা ইউজারদের জানানো
-            users = await db.get_all_frwd()
-            async for user in users:
-                try:
-                    chat_id = user.get('user_id') if isinstance(user, dict) else getattr(user, 'user_id', None)
-                    if chat_id:
-                        await self.send_message(chat_id, stop_text)
-                except: continue
-        except: pass
+        # বন্ধ হওয়ার আগে চেক করে মেসেজ পাঠানো
+        if self.is_connected:
+            try:
+                stop_text = "**🔴 বটটি বর্তমানে অফলাইন করা হয়েছে।**"
+                if hasattr(Config, 'LOG_CHANNEL') and Config.LOG_CHANNEL:
+                    await self.send_message(Config.LOG_CHANNEL, stop_text)
+            except:
+                pass
 
-        # প্রপারলি ক্লায়েন্টগুলো বন্ধ করা
         if self.user and self.user.is_connected:
             await self.user.stop() 
         if self.is_connected:
